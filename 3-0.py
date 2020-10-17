@@ -32,3 +32,6 @@ s = requests.Session()
 r = s.get(fullUrl, headers=headers_Get)
 soup = BeautifulSoup(r.text, "html.parser")
 #print(soup)
+
+items = soup.findAll(class_='yuRUbf')
+print(items)
