@@ -25,3 +25,10 @@ queryString = keyword + '+' + site
 startItem = 0
 startParam = '&start='
 suffix = '&aqs=chrome..69i57j0i333.5056j0j7&sourceid=chrome&ie=UTF-8'
+
+fullUrl = baseUrl + queryString + startParam + str(startItem) + suffix
+#fullUrl = 'https://www.google.com/search?q=%E5%A4%A9%E4%B8%8B%E9%9B%9C%E8%AA%8C+%22%E5%95%86%E6%A5%AD%E6%99%BA%E6%85%A7%22&sxsrf=ALeKk009GnnEWKaB_OCts44AdFaIrWHIwg:1602743955345&ei=k-6HX7zPFJWSr7wPwZy7sAI&start=0&sa=N&ved=2ahUKEwj85P7A_rXsAhUVyYsBHUHODiY4RhDy0wN6BAgMEDQ&biw=707&bih=956'
+s = requests.Session()
+r = s.get(fullUrl, headers=headers_Get)
+soup = BeautifulSoup(r.text, "html.parser")
+#print(soup)
