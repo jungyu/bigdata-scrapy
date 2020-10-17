@@ -13,3 +13,15 @@ headers_Get = {
         'Connection': 'keep-alive',
         'Upgrade-Insecure-Requests': '1'
     }
+
+#天下雜誌搜尋結果頁(分類頁是 Lazy-load 模式，不適合一般爬蟲取得分頁)
+#https://www.cw.com.tw/search/doSearch.action?key=%E4%BA%BA%E5%B7%A5%E6%99%BA%E6%85%A7&channel=all&sort=desc
+#改使用 Google 新聞，缺點是可能取到不是內容頁面
+baseUrl = 'https://www.google.com/search?q='
+#商業智慧+site:www.cw.com.tw
+keyword = "商業智慧"
+site = 'site:www.cw.com.tw'
+queryString = keyword + '+' + site
+startItem = 0
+startParam = '&start='
+suffix = '&aqs=chrome..69i57j0i333.5056j0j7&sourceid=chrome&ie=UTF-8'
