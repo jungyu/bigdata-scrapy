@@ -46,3 +46,10 @@ for item in items:
         print(item.h3.span.text)
         titles.append(item.h3.span.text)
         links.append(item.a['href'])
+
+        
+searchPages = soup.findAll('td')
+lastPage = 1
+for searchPage in searchPages:
+  if searchPage.a is not None:
+    print(searchPage.a.text)
