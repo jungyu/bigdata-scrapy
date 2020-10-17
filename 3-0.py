@@ -35,3 +35,14 @@ soup = BeautifulSoup(r.text, "html.parser")
 
 items = soup.findAll(class_='yuRUbf')
 print(items)
+
+titles = []
+links = []
+contain = 'article'
+for item in items:
+    #只取內容頁
+    if contain in item.a['href']:
+        print(item.a['href'])
+        print(item.h3.span.text)
+        titles.append(item.h3.span.text)
+        links.append(item.a['href'])
