@@ -48,11 +48,18 @@ for item in items:
         links.append(item.a['href'])
 
         
+
 searchPages = soup.findAll('td')
 lastPage = 1
 for searchPage in searchPages:
   if searchPage.a is not None:
     print(searchPage.a.text)
+    try:
+      lastPage = int(searchPage.a.text)
+      print(lastPage)
+    except ValueError:
+      print(searchPage.a.text + " is not integer")
+
 
 for i in range(2, lastPage):
   #print(i)
