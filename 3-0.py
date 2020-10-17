@@ -53,3 +53,19 @@ lastPage = 1
 for searchPage in searchPages:
   if searchPage.a is not None:
     print(searchPage.a.text)
+
+for i in range(2, lastPage):
+  #print(i)
+  startItem = (i-1)*10
+  fullUrl = baseUrl + queryString + startParam + str(startItem) + suffix
+  s = requests.Session()
+  r = s.get(fullUrl, headers=headers_Get)
+  soup = BeautifulSoup(r.text, "html.parser")
+  items = soup.findAll(class_='yuRUbf')
+  for item in items:
+    #只取內容頁
+    if contain in item.a['href']:
+        print(item.a['href'])
+        print(item.h3.span.text)
+        titles.append(item.h3.span.text)
+        links.append(item.a['href'])
