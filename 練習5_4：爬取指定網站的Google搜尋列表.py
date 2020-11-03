@@ -1,9 +1,10 @@
 # 練習5_4：爬取指定網站的Google搜尋列表
-
 import time
 import random
-from datetime import datetime
+import json
+import html
 import configparser
+from datetime import datetime
 
 import loguru
 import sqlalchemy
@@ -16,18 +17,26 @@ import ntpath
 import requests
 from lxml import etree
 
+
+__articletable__ = 'crawler_article'
+__articlemetatable__ = 'crawler_articlemeta'
+__fieldstable__ = 'crawler_fields'
+__listtable__ = 'crawler_list'
+__mediatable__ = 'crawler_media'
+
 #請求網頁
 def requestHtml(url):
   s = requests.Session()
   r = s.get(url, headers=headers_Get)
+  r.encoding = 'utf-8'
   return etree.HTML(r.text)
 
 #組合列表中的標題
 def composeItems(pageLinks, links, titles):
+  contain = 'article'
   for idx, link in enumerate(links):
-    print(link)
-    print(titles[idx])
-    pageLinks.append({"title":titles[idx], "link":link})
+    if link.find(contain) >= 0 :
+      pageLinks.append({"title":titles[idx], "link":link})
 
   return pageLinks
 
@@ -71,11 +80,16 @@ def download_file(url, filename):
         print("Error")
         return 0
 
-def fetch_item_link(pageLinks, startItem):
+def fetch_item_link(pageLinks, currentPage):
+    global lastPage
+    startItem = (currentPage-1)*10
     fullUrl = baseUrl + queryString + startParam + str(startItem) + suffix
     dom = requestHtml(fullUrl)
     links = dom.xpath('//div[@class="yuRUbf"]/a/@href')
     titles = dom.xpath('//div[@class="yuRUbf"]//h3/span/text()')
+    #將 etree type 轉成字串
+    links = [str(link) for link in links]
+    titles = [str(title) for title in titles]
     #取得最後一頁的數值
     searchPages = dom.xpath('//td/a/text()')
     lastPage = findLastPage(searchPages)
@@ -83,30 +97,29 @@ def fetch_item_link(pageLinks, startItem):
     return composeItems(pageLinks, links, titles)
 
 def crawl_google_list():
-    startItem = 0
+    global lastPage
+    currentPage = 1
     #解析回傳的列表標題及連結
     pageLinks = []
-    pageLinks = fetch_item_link(pageLinks, startItem)
+    pageLinks = fetch_item_link(pageLinks, currentPage)
 
     #等待數秒(1~5秒間)
-    time.sleep(random.randint(1000, 5000)/1000)
+    time.sleep(random.randint(3000, 8000)/1000)
     #逐頁爬取文章連結及標題
-    ''' TOFIX
-    for i in range(2, lastPage):
-        #print(i)
-        startItem = (i-1)*10
-        pageLinks = fetch_item_link(pageLinks, startItem)
+    while currentPage <= lastPage :
+        currentPage = currentPage + 1
+        pageLinks = fetch_item_link(pageLinks, currentPage)
         time.sleep(random.randint(1000, 5000)/1000)
-    '''
+
     #去除重複的內容
-    print(len(pageLinks))
+    #print(len(pageLinks))
     pageLinks = [dict(t) for t in {tuple(d.items()) for d in pageLinks}]
-    print(len(pageLinks))
+    #print(len(pageLinks))
 
     #排序連結
-    print(pageLinks)
+    #print(pageLinks)
     sortedPageLinks = sorted(pageLinks, key=lambda k: k['link']) 
-    print(sortedPageLinks)
+    #print(sortedPageLinks)
     return sortedPageLinks
 
 def parse_article_element(dom, label, element_xpath, keepSpace):
@@ -122,7 +135,6 @@ def parse_article_element(dom, label, element_xpath, keepSpace):
      
 def crawl_article(pageLinks):
     #讀取內容頁
-    contain = 'article'
     articles = []
     for pageLink in pageLinks:
         try:
@@ -147,9 +159,13 @@ def crawl_article(pageLinks):
   
         #內文
         content =  parse_article_element(dom, '內文', '//div[contains(@class, "article__content")]', True)
-        content = etree.tostring(content, encoding='unicode')
-        content = remove_tags(content)
-        content = content.replace('廣告', '')
+        if content != '':
+            content = etree.tostring(content)
+            content = str(content)
+            content = remove_tags(content)
+            content = content.replace('廣告', '')
+            #處理 HTML Entity Code 問題
+            content = html.unescape(content)
 
         #關鍵字
         keywords = parse_article_element(dom, '關鍵字', '//meta[@name="keywords"]/@content', True)
@@ -161,20 +177,111 @@ def crawl_article(pageLinks):
             for url in urls:
                 filename = 'images/' + path_leaf(url)
                 images.append({'url':url, 'filename': filename})
+                #TOFIX
                 #download_file(url, filename)
             #print(images)
         except:
             print('沒有附圖')
 
-        articles.append({'title':articleTitle, 'link':pageLink['link'], 'keywords':keywords, 'author':author, 'preface':preface, 'content':content, 'images':images, 'post_date':postDate})
-        time.sleep(1)
-        break #TOFIX
+        articles.append({
+            'title':str(articleTitle), 
+            'link':str(pageLink['link']), 
+            'keywords':str(keywords), 
+            'author':str(author), 
+            'preface':str(preface), 
+            'content':content, 
+            'images':json.dumps(images, ensure_ascii=False).encode('utf-8').decode('utf-8'), #解決 HTML Entity 編碼問題
+            'post_date':str(postDate)
+        })
+        time.sleep(random.randint(1000, 5000)/1000)
     return articles
+
+#發現重複的列表項目，若有不再予以新增
+def find_duplicate_db_list(item):
+    sqlalchemy.Table(__listtable__, metadata, autoload=True)
+    Alist = automap.classes[__listtable__]
+
+    aList = session.query(
+        Alist
+    ).filter(
+        Alist.source_id == 1, #item['source_id'],
+        Alist.article_title == item['title'],
+        Alist.article_url == item['link']
+    ).first()
+
+    if aList:
+        loguru.logger.info('Find duplicate source article: ' + str(aList.id))
+        return aList.id
+    else:
+        return False
+
+def create_db_list_item(item):
+    loguru.logger.info(item['title'])
+
+    itemDuplicateId = find_duplicate_db_list(item)
+    if itemDuplicateId != False:
+        return itemDuplicateId
+
+    created = int(time.mktime(datetime.now().timetuple()))
+    sqlalchemy.Table(__listtable__, metadata, autoload=True)
+    Alist = automap.classes[__listtable__]
+
+    alist = Alist()
+    alist.source_id = 1 #item['source_id']
+    alist.topic = keyword #item['topics']
+    alist.article_title = item['title']
+    alist.article_url = item['link']
+    alist.created = created
+    session.add(alist)
+    session.flush()
+
+    return alist.id
+
+def create_db_article(item, listId):
+    created = int(time.mktime(datetime.now().timetuple()))
+    sqlalchemy.Table(__articletable__, metadata, autoload=True)
+    Article = automap.classes[__articletable__]
+
+    sourceContent = {
+        'keywords': item['keywords'], 
+        'author': item['author'], 
+        'preface': item['preface'],  
+        'content': item['content'],
+        'post_date': item['post_date']
+    }
+    sourceContent = json.dumps(sourceContent, ensure_ascii=False).encode('utf-8').decode('utf-8')
+    print(sourceContent)
+
+    article = Article()
+    article.list_id = listId
+    article.source_url = item['link']
+    article.title = item['title']
+    article.source_content = sourceContent
+    article.source_media = item['images']
+    article.created = created
+    session.add(article)
+    return
+
+def create_db_crawler(articles):
+    for item in articles:
+        listId = create_db_list_item(item)
+        create_db_article(item, listId)
+        try:
+            session.commit()
+        except Exception as e:
+            loguru.logger.error('新增資料失敗')
+            loguru.logger.error(e)
+            session.rollback()
+
+    session.close()
+    loguru.logger.info('完成爬蟲及寫入資料.')
+    return
 
 def main():
     pageLinks = crawl_google_list()
+    print(pageLinks)
     articles = crawl_article(pageLinks)
-    print(articles)
+    create_db_crawler(articles)
 
 if __name__ == '__main__':
     loguru.logger.add(
@@ -222,12 +329,12 @@ if __name__ == '__main__':
     #爬取指定網站的 Google 列表搜尋
     baseUrl = 'https://www.google.com/search?q='
     #商業智慧+site:www.cw.com.tw
-    keyword = "商業智慧"
+    keyword = "\"商業智慧\""
     site = 'site:www.cw.com.tw'
     queryString = keyword + '+' + site
     startParam = '&start='
     suffix = '&aqs=chrome..69i57j0i333.5056j0j7&sourceid=chrome&ie=UTF-8'
 
-    lastPage = 0
+    lastPage = 1
 
     main()
