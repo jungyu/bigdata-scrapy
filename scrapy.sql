@@ -1,6 +1,6 @@
 /* CREATE SCHEMA `scrapy` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; */
 
-CREATE TABLE `crawler_article` (
+CREATE TABLE `scrapy`.`crawler_article` (
   `id` bigint(40) NOT NULL AUTO_INCREMENT,
   `list_id` bigint(30) DEFAULT NULL,
   `title` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
@@ -21,7 +21,7 @@ CREATE TABLE `crawler_article` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE `crawler_articlemeta` (
+CREATE TABLE `scrapy`.`crawler_articlemeta` (
   `id` bigint(50) NOT NULL AUTO_INCREMENT,
   `article_id` bigint(40) DEFAULT NULL,
   `meta_key` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE `crawler_articlemeta` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE `crawler_fields` (
+CREATE TABLE `scrapy`.`crawler_fields` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `source_id` bigint(20) DEFAULT NULL,
   `source_fields` text COLLATE utf8mb4_general_ci,
@@ -40,7 +40,7 @@ CREATE TABLE `crawler_fields` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE `crawler_list` (
+CREATE TABLE `scrapy`.`crawler_list` (
   `id` bigint(30) NOT NULL AUTO_INCREMENT,
   `source_id` bigint(20) DEFAULT NULL,
   `topic` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE `crawler_list` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE `crawler_media` (
+CREATE TABLE `scrapy`.`crawler_media` (
   `id` bigint(50) NOT NULL AUTO_INCREMENT,
   `article_id` bigint(40) DEFAULT NULL,
   `articlemeta_id` bigint(50) DEFAULT NULL,
@@ -65,7 +65,7 @@ CREATE TABLE `crawler_media` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE `crawler_source` (
+CREATE TABLE `scrapy`.`crawler_source` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `name` varchar(90) DEFAULT NULL,
   `description` text,
@@ -81,7 +81,7 @@ CREATE TABLE `crawler_source` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE `wp_postmeta` (
+CREATE TABLE `scrapy`.`wp_postmeta` (
   `meta_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `post_id` bigint(20) unsigned NOT NULL DEFAULT '0',
   `meta_key` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
@@ -91,11 +91,11 @@ CREATE TABLE `wp_postmeta` (
   KEY `meta_key` (`meta_key`(191))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE `wp_posts` (
+CREATE TABLE `scrapy`.`wp_posts` (
   `ID` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `post_author` bigint(20) unsigned NOT NULL DEFAULT '0',
-  `post_date` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
-  `post_date_gmt` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+  `post_date` datetime NOT NULL DEFAULT '1970-01-01 00:00:00',
+  `post_date_gmt` datetime NOT NULL DEFAULT '1970-01-01 00:00:00',
   `post_content` longtext COLLATE utf8mb4_general_ci NOT NULL,
   `post_title` text COLLATE utf8mb4_general_ci NOT NULL,
   `post_excerpt` text COLLATE utf8mb4_general_ci NOT NULL,
@@ -106,8 +106,8 @@ CREATE TABLE `wp_posts` (
   `post_name` varchar(200) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
   `to_ping` text COLLATE utf8mb4_general_ci NOT NULL,
   `pinged` text COLLATE utf8mb4_general_ci NOT NULL,
-  `post_modified` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
-  `post_modified_gmt` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+  `post_modified` datetime NOT NULL DEFAULT '1970-01-01 00:00:00',
+  `post_modified_gmt` datetime NOT NULL DEFAULT '1970-01-01 00:00:00',
   `post_content_filtered` longtext COLLATE utf8mb4_general_ci NOT NULL,
   `post_parent` bigint(20) unsigned NOT NULL DEFAULT '0',
   `guid` varchar(255) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
@@ -122,7 +122,7 @@ CREATE TABLE `wp_posts` (
   KEY `post_author` (`post_author`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE `wp_term_relationships` (
+CREATE TABLE `scrapy`.`wp_term_relationships` (
   `object_id` bigint(20) unsigned NOT NULL DEFAULT '0',
   `term_taxonomy_id` bigint(20) unsigned NOT NULL DEFAULT '0',
   `term_order` int(11) NOT NULL DEFAULT '0',
@@ -130,7 +130,7 @@ CREATE TABLE `wp_term_relationships` (
   KEY `term_taxonomy_id` (`term_taxonomy_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE `wp_term_taxonomy` (
+CREATE TABLE `scrapy`.`wp_term_taxonomy` (
   `term_taxonomy_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `term_id` bigint(20) unsigned NOT NULL DEFAULT '0',
   `taxonomy` varchar(32) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
@@ -142,7 +142,7 @@ CREATE TABLE `wp_term_taxonomy` (
   KEY `taxonomy` (`taxonomy`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE `wp_termmeta` (
+CREATE TABLE `scrapy`.`wp_termmeta` (
   `meta_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `term_id` bigint(20) unsigned NOT NULL DEFAULT '0',
   `meta_key` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
@@ -152,7 +152,7 @@ CREATE TABLE `wp_termmeta` (
   KEY `meta_key` (`meta_key`(191))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE `wp_terms` (
+CREATE TABLE `scrapy`.`wp_terms` (
   `term_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(200) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
   `slug` varchar(200) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
