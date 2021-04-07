@@ -8,7 +8,7 @@ from selenium.webdriver.common.keys import Keys
 
 from captcha_solver import CaptchaSolver
 
-solver = CaptchaSolver('2captcha', api_key='bba8bb4bc755ee8bf9d0ef0beeb6bbb1')
+solver = CaptchaSolver('2captcha', api_key='金鑰')
 
 options = Options()
 options.binary_location = "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"
