@@ -1,3 +1,4 @@
+#selenium_icook_3.py 取得列表
 import sys
 import re
 import ntpath
