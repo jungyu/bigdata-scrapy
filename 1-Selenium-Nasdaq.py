@@ -4,15 +4,12 @@
 授權：本著作係採用創用 CC 姓名標示 4.0 國際 授權條款授權
 """
 __author__ = "Jung-Yu Yu"
-__copyright__ = "Copyright 2022, The Big Data Scrapy for Python Project"
-__credits__ = ["Jung-Yu Yu"]
-__license__ = "Creative Common"
-__version__ = "4.0"
-__maintainer__ = "Jung-Yu Yu"
 __email__ = "jungyuyu@gmail.com"
+__copyright__ = "Copyright 2022, The Big Data Scrapy for Python Project"
+__license__ = "Creative Common 4.0"
 __github__ = "https://github.com/jungyu/bigdata-scrapy"
+__version__ = "0.1"
 __status__ = "Beta"
-
 
 from lxml import etree
 
@@ -26,7 +23,7 @@ options = webdriver.ChromeOptions()
 # 找 user-agent 的網站： https://www.whatsmyua.info/
 userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36";
 
-# 許多網站會檢查 user-agent
+# 許多網站會檢查 user-agent 
 options.add_argument("user-agent={}".format(userAgent))
 
 # 不讓瀏覽器執行在前台，而是在背景執行。
@@ -36,13 +33,13 @@ options.add_argument("user-agent={}".format(userAgent))
 # 在非沙盒測試環境下，可以 root 權限運行
 options.add_argument('--no-sandbox')
 
-# 不以 /dev/shm 作為暫存區(使用 /tmp)
+# 不採用 /dev/shm 作為暫存區(系統會改使用 /tmp)
 options.add_argument('--disable-dev-shm-usage')
 
 # 設定瀏覽器的解析度
 # options.add_argument('--window-size=1920,1080')
 
-# 關閉 GPU ，Google 文件提到需要加上這個參數以解決部份的 bug
+# 關閉 GPU ，Google 文件提到需要加上這個參數來解決部份的 bug
 # options.add_argument('--disable-gpu')
 
 # open it, go to a website, and get results
@@ -71,13 +68,15 @@ def composeTrade(dom):
 
 #第一頁
 wd.get(baseUrl)
-#隱式等待：是在嘗試發現某個元素的時候，如果沒能立刻發現，就等待固定長度的時間。預設設定是0秒。
+#隱式等待：嘗試發現某個元素，如果沒能發現就等待固定長度的時間，預設設定是0秒。
 wd.implicitly_wait(5)
 
 results = wd.find_element(By.XPATH, '//table[@class="latest-real-time-trades__table"]').get_attribute('innerHTML')
 dom = etree.HTML(results)
 
-#TODO:交易日
+#交易日
+tradeDate = wd.find_element(By.XPATH, '//div[@class="symbol-page-header__timestamp"]/span[@class="symbol-page-header__status"]').text
+print(tradeDate)
 
 dayTrades = composeTrade(dom)
 #持續點擊下一頁
