@@ -192,7 +192,7 @@ def composeProducts(dom):
     return products
 
 def saveJsonFile(products):
-    with open(storeName + datetime.now().strftime("_%Y%m%d%m") + ".json", "w", encoding='utf-8') as outfile:
+    with open(storeName + datetime.now().strftime("_%Y%m%d") + ".json", "w", encoding='utf-8') as outfile:
         json.dump(products, outfile, ensure_ascii=False)    
 
 #清空字串內全部的 html tag，只留下內文
