@@ -77,17 +77,17 @@ def fetchProductList():
     dom = etree.HTML(results)
     list = composeProducts(dom)
     totalPage = wd.find_element(By.XPATH, '//span[@class="shopee-mini-page-controller__total"]').text
-    '''
+    #測試時，若筆數太多造成處理時間冗長，建議註解以下分頁迴圈處理
     for pageNumber in range(1, int(totalPage), 1):
         print('Feteching Page: ' + str(pageNumber))
         list += fetchProductListByPage(pageNumber)
-    '''
+
     return list
 
 def fetchProductListByPage(pageNumber):
     wd.get(baseUrl + storeUrl + '?sortBy=ctime&page=' + str(pageNumber) + '#product_list')
     sleep(random.randint(5000, 8000)/1000)
-    ResultView = WebDriverWait(wd, 10).until(expected_conditions.presence_of_element_located((By.XPATH, '//div[@class="shop-search-result-view"]')))
+    ResultView = WebDriverWait(wd, 20).until(expected_conditions.presence_of_element_located((By.XPATH, '//div[@class="shop-search-result-view"]')))
     #滾動到指定元素底部
     wd.execute_script("arguments[0].scrollIntoView(false)", ResultView)
     sleep(random.randint(5000, 8000)/1000)
