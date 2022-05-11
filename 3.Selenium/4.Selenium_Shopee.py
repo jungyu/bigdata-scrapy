@@ -13,9 +13,6 @@ __status__ = "Beta"
 
 import random
 import json
-import html
-import urllib
-import configparser
 import re
 
 from datetime import datetime
@@ -23,10 +20,6 @@ from lxml import etree
 from time import sleep
 
 import loguru
-import sqlalchemy
-import sqlalchemy.ext.automap
-import sqlalchemy.orm
-import sqlalchemy.schema
 
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -34,32 +27,17 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 
-options = webdriver.ChromeOptions()
-# 找 user-agent 的網站： https://www.whatsmyua.info/
-userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"
-# 許多網站會檢查 user-agent 
-options.add_argument("user-agent={}".format(userAgent))
-# 不讓瀏覽器執行在前台，而是在背景執行。
-# 開發前期(或在本機執行)，將以下參數註解 # 不使用，才能看的到畫面
-# options.add_argument('--headless')
-# 在非沙盒測試環境下，可以 root 權限運行
-options.add_argument('--no-sandbox')
-# 不採用 /dev/shm 作為暫存區(系統會改使用 /tmp)
-options.add_argument('--disable-dev-shm-usage')
-# 設定瀏覽器的解析度
-# options.add_argument('--window-size=1920,1080')
-# 關閉 GPU ，Google 文件提到需要加上這個參數來解決部份的 bug
-# options.add_argument('--disable-gpu')
-# open it, go to a website, and get results
-wd = webdriver.Chrome(options=options)
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
 #蝦皮使用 js 載入商品列表，因此適合使用 Selenium
-baseUrl = 'https://shopee.tw'
-storeUrl = '/hsu6666'
-storeName = '娜娜正版專賣'
+__baseUrl__ = 'https://shopee.tw'
+__storeUrl__ = '/hsu6666'
+__storeName__ = '娜娜正版專賣'
 
 def main():
-    wd.get(baseUrl + storeUrl + '?sortBy=ctime&page=0#product_list')
+    wd.get(__baseUrl__ + __storeUrl__ + '?sortBy=ctime&page=0#product_list')
     sleep(random.randint(5000, 8000)/1000)
     productList = fetchProductList()
     #去除重複的連結
@@ -85,7 +63,7 @@ def fetchProductList():
     return list
 
 def fetchProductListByPage(pageNumber):
-    wd.get(baseUrl + storeUrl + '?sortBy=ctime&page=' + str(pageNumber) + '#product_list')
+    wd.get(__baseUrl__ + __storeUrl__ + '?sortBy=ctime&page=' + str(pageNumber) + '#product_list')
     sleep(random.randint(5000, 8000)/1000)
     ResultView = WebDriverWait(wd, 20).until(expected_conditions.presence_of_element_located((By.XPATH, '//div[@class="shop-search-result-view"]')))
     #滾動到指定元素底部
@@ -99,7 +77,7 @@ def fetchProducts(productList):
     products = []
     for idx, list in enumerate(productList):
         print('Feteching Product Index: ' + str(idx))
-        wd.get(baseUrl + list['link'])
+        wd.get(__baseUrl__ + list['link'])
         sleep(random.randint(5000, 8000)/1000)
         results = WebDriverWait(wd, 10).until(expected_conditions.presence_of_element_located((By.XPATH, '//div[@class="page-product"]'))).get_attribute('innerHTML')
         dom = etree.HTML(results)
@@ -192,7 +170,7 @@ def composeProducts(dom):
     return products
 
 def saveJsonFile(products):
-    with open(storeName + datetime.now().strftime("_%Y%m%d") + ".json", "w", encoding='utf-8') as outfile:
+    with open(__storeName__ + datetime.now().strftime("_%Y%m%d") + ".json", "w", encoding='utf-8') as outfile:
         json.dump(products, outfile, ensure_ascii=False)    
 
 #清空字串內全部的 html tag，只留下內文
@@ -207,5 +185,40 @@ if __name__ == '__main__':
         retention='7 days',
         level='DEBUG'
     )
+
+    options = Options()
+
+    # 排除項目： 1. automation 自動軟體正在控制您的瀏覽器 2. logging 日誌記錄 3. Extension 擴展
+    options.add_experimental_option("excludeSwitches", ["enable-automation", 'enable-logging'])
+    options.add_experimental_option('useAutomationExtension', False)
+    # 暫先停用密碼管理員及憑證服務
+    options.add_experimental_option("prefs", {"profile.password_manager_enabled": False, "credentials_enable_service": False})
+    # 預設使用 chromium 核心
+    options.use_chromium = True
+
+    # 許多網站會檢查 user-agent 
+    # 找 user-agent 的網站： https://www.whatsmyua.info/
+    userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36";
+    options.add_argument("user-agent={}".format(userAgent))
+
+    # 不讓瀏覽器執行在前台，而是在背景執行。
+    # 開發前期(或在本機執行)，將以下參數註解 # 不使用，才能看的到畫面
+    # options.add_argument('--headless')
+
+    # 在非沙盒測試環境下，可以 root 權限運行
+    options.add_argument('--no-sandbox')
+
+    # 不採用 /dev/shm 作為暫存區(系統會改使用 /tmp)
+    options.add_argument('--disable-dev-shm-usage')
+
+    # 設定瀏覽器的解析度
+    options.add_argument("--start-maximized")
+    # options.add_argument('--window-size=1920,1080')
+
+    # 關閉 GPU ，Google 文件提到需要加上這個參數來解決部份的 bug
+    # options.add_argument('--disable-gpu')
+
+    # 宣告 webdriver 實體
+    wd = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
     main()
