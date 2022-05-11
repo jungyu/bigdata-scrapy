@@ -11,6 +11,13 @@ __github__ = "https://github.com/jungyu/bigdata-scrapy"
 __version__ = "0.1"
 __status__ = "Beta"
 
+"""
+安裝相依套件：
+ python -m pip install lxml
+ python -m pip install webdriver-manager
+ python -m pip install selenium
+"""
+
 from lxml import etree
 
 from selenium import webdriver
@@ -18,12 +25,22 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
 
-options = webdriver.ChromeOptions()
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
-# 找 user-agent 的網站： https://www.whatsmyua.info/
-userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36";
+#
+options = Options()
+
+# 排除
+options.add_experimental_option("excludeSwitches", ["enable-automation", 'enable-logging'])
+options.add_experimental_option('useAutomationExtension', False)
+options.add_experimental_option("prefs", {"profile.password_manager_enabled": False, "credentials_enable_service": False})
+options.use_chromium = True
 
 # 許多網站會檢查 user-agent 
+# 找 user-agent 的網站： https://www.whatsmyua.info/
+userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36";
 options.add_argument("user-agent={}".format(userAgent))
 
 # 不讓瀏覽器執行在前台，而是在背景執行。
@@ -37,13 +54,14 @@ options.add_argument('--no-sandbox')
 options.add_argument('--disable-dev-shm-usage')
 
 # 設定瀏覽器的解析度
+options.add_argument("--start-maximized")
 # options.add_argument('--window-size=1920,1080')
 
 # 關閉 GPU ，Google 文件提到需要加上這個參數來解決部份的 bug
 # options.add_argument('--disable-gpu')
 
-# open it, go to a website, and get results
-wd = webdriver.Chrome(options=options)
+
+wd = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
 #此網址是 Nasdaq 網站的 Tesla 即時股價，此股價在換頁時，網址並不會更動，因此適合使用 Selenium
 baseUrl = 'https://www.nasdaq.com/market-activity/stocks/tsla/latest-real-time-trades'
