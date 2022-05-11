@@ -8,8 +8,8 @@ Original file is located at
 """
 
 #安裝相關函式庫
-!pip install requests
-!pip install beautifulsoup4
+#!pip install requests
+#!pip install beautifulsoup4
 
 #匯入必要函式庫
 import time

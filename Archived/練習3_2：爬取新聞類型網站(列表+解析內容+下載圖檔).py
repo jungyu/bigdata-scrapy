@@ -7,8 +7,8 @@ Original file is located at
     https://colab.research.google.com/drive/13jhCJOx-a2uuq8hYWdx-HTQT8HN-L6VM
 """
 
-!pip install requests
-!pip install beautifulsoup4
+#!pip install requests
+#!pip install beautifulsoup4
 
 import time
 import re
