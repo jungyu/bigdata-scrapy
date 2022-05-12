@@ -1,5 +1,5 @@
 # SQLAlchemy ORM 
-
+# 安裝指令： python -m pip install sqlalchemy
 import datetime
 import configparser
 

@@ -19,7 +19,7 @@ db = pymysql.connect(host=host, port=port, user=user, passwd=passwd, db=db, char
 cursor = db.cursor()
 
 #查詢 crawler_source
-sourceSQL = str("SELECT * FROM wordpress.crawler_source;")
+sourceSQL = str("SELECT * FROM crawler_source;")
 
 #執行語法
 try:

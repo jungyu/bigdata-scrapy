@@ -1,4 +1,5 @@
 # 練習5_4：爬取指定網站的Google搜尋列表
+# 安裝指令： python3 -m pip install --upgrade mysql-connector-python
 import time
 import random
 import json

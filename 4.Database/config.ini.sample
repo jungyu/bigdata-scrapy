@@ -1,9 +1,9 @@
 [mysql]
-Host = db4free.net
+Host = 127.0.0.1
 Port = 3306
-User = dsaaron
-Password = nFzG8pM#cFX(hfXhwS
-Database = shop_scrapy
+User = root
+Password = 密碼
+Database = 資料庫名稱
 Charset = utf8mb4
 
 [2captcha]
