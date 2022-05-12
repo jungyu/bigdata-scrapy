@@ -1,3 +1,4 @@
 logs/
 *.log
 4.Database/config.ini
+5.Complete/config.ini
