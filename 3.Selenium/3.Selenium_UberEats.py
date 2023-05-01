@@ -15,10 +15,13 @@ from lxml import etree
 from time import sleep
 
 from selenium import webdriver
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import StaleElementReferenceException
 
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -30,16 +33,19 @@ import time
 __baseUrl__ = 'https://www.ubereats.com'
 __address__ = '屏東縣內埔鄉學府路1號'
 __want__ = '咖啡'
-__wantStore__ = '楓茶記冰火菠蘿油 屏東廣東店'
+__wantStore__ = '巨森早午餐'
 __wantCategory__ = "人氣精選"
-__wantItem__ = "冰火菠蘿油"
-__wantOption__ = "奶油"
+__wantItem__ = "喜揚揚拼盤"
+__wantOption__ = "原味"
 
 def main():
 
     wd.get(__baseUrl__+'/tw')
     #隱式等待：嘗試發現某個元素，如果沒能發現就等待固定長度的時間，預設設定是0秒。
     wd.implicitly_wait(5)
+
+    # 禁用動畫
+    wd.execute_script("document.body.style.webkitAnimationPlayState='paused'")
 
     #第一次進入，要輸入取餐地址
     wd.find_element(By.ID, 'location-typeahead-home-input').send_keys(__address__)
@@ -51,12 +57,12 @@ def main():
     wd.find_element(By.XPATH, '//div[@aria-label="外帶"]').click()
 
     ### 在「想吃點什麼」搜尋框，輸入want變數 ###
-    searchInput = WebDriverWait(wd, 10).until(expected_conditions.presence_of_element_located((By.ID, 'search-suggestions-typeahead-input')))
+    searchInput = WebDriverWait(wd, 10).until(EC.presence_of_element_located((By.ID, 'search-suggestions-typeahead-input')))
     searchInput.send_keys(__want__)
     searchInput.send_keys(Keys.ENTER)
 
     ### 搜尋結果列表 ###
-    wd.implicitly_wait(8)
+    wd.implicitly_wait(10)
     results = wd.find_element(By.XPATH, '//h3/parent::a/parent::div/parent::div/parent::div/parent::div').get_attribute('innerHTML')
     dom = etree.HTML(results)
 
@@ -69,10 +75,13 @@ def main():
     #高效精簡寫法： https://peps.python.org/pep-0289/
     time.sleep(5)
     idx = next((i for i, item in enumerate(stores) if item["title"] == __wantStore__), None)
-    storeUrl = __baseUrl__ + stores[idx]['link']
-    wd.get(storeUrl)
-    wd.implicitly_wait(5)
-
+    if idx is not None:
+        storeUrl = __baseUrl__ + stores[idx]['link']
+        wd.get(storeUrl)
+        wd.implicitly_wait(8)
+    else:
+        pass
+    
     ### 回傳商品分類，供使用者選擇 ###
     results = wd.find_element(By.XPATH, '//nav[@role="navigation"]').get_attribute('innerHTML')
     dom = etree.HTML(results)
@@ -82,7 +91,7 @@ def main():
         print(category)
 
     ### 回傳使用者指定分類裡的商品，供使用者選擇 ###
-    results = wd.find_element(By.XPATH, '//li/div[contains(text(),"' + __wantCategory__ + '")]/parent::li').get_attribute('innerHTML')
+    results = wd.find_element(By.XPATH, '//li/h3[contains(text(),"' + __wantCategory__ + '")]/parent::li').get_attribute('innerHTML')
     dom = etree.HTML(results)
 
     products = dom.xpath('//span/text()')
@@ -90,21 +99,33 @@ def main():
         print(products[idx] + ' ... ' + products[idx+1])
 
     ### 選購指定商品 ###
-    itemButton = wd.find_element(By.XPATH, '//li/div[contains(text(),"' + __wantCategory__ + '")]/parent::li//span[contains(text(),"' + __wantItem__ + '")]/parent::div/parent::div/following::div[1]/button')
-    itemButton.click()
+    wait = WebDriverWait(wd, 5)
+    productItem = '//li/h3[contains(text(),"' + __wantCategory__ + '")]/parent::li//span[contains(text(),"' + __wantItem__ + '")]/parent::div/parent::div'
+    productElement = wait.until(EC.element_to_be_clickable((By.XPATH, productItem)))
 
+    #將捲軸捲到 bottom 的定位點
+    wd.execute_script("arguments[0].scrollIntoView()", productElement)
+
+    # 移動到該元素上方再進行點擊
+    actions = ActionChains(wd)
+    actions.move_to_element(productElement).click().perform()
+
+    '''
+    itemButton = wd.find_element(By.XPATH, '//li/h3[contains(text(),"' + __wantCategory__ + '")]/parent::li//span[contains(text(),"' + __wantItem__ + '")]/parent::div/parent::div/following::div[1]/button')
+    itemButton.click()
+    '''
     ### 在 Dialog 對話視窗內選購 ###
     sleep(5)
-    WebDriverWait(wd, 10).until(expected_conditions.presence_of_element_located((By.XPATH, '//div[@role="dialog"]//h1')))
+    WebDriverWait(wd, 10).until(EC.presence_of_element_located((By.XPATH, '//main[@id="main-content"]//h1')))
 
     #等待能定位到選項按鈕(一般選項按鈕應是使用 input ，但此處使用 input 無法定位座標，應該是元素在螢幕上的座標位置不正確，由此推估操作 AJAX 點擊對應的是螢幕上的座標位置，而不是元素本身)
-    optionButton = WebDriverWait(wd, 10).until(expected_conditions.presence_of_element_located((By.XPATH, '//div[@role="dialog"]//label//div[contains(text(),"' + __wantOption__ + '")]/ancestor::label')))
+    optionButton = WebDriverWait(wd, 10).until(EC.presence_of_element_located((By.XPATH, '//div[@data-testid="customization-pick-one"]//label//div[contains(text(),"' + __wantOption__ + '")]/ancestor::label')))
     #將捲軸捲到 optionButton 的定位點
     wd.execute_script("arguments[0].scrollIntoView()", optionButton)
     optionButton.click()
     wd.implicitly_wait(2)
 
-    orderButton = wd.find_element(By.XPATH, '//div[@role="dialog"]//button/div[contains(text(), "商品至訂單")]/parent::button')
+    orderButton = wd.find_element(By.XPATH, '//main[@id="main-content"]//button/div[contains(text(), "商品至訂單")]/parent::button')
     orderButton.click()
     # TODO:結帳->登入...
     # TODO:使用 ngrok 對外提供 API 或 webhook
