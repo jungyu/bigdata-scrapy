@@ -21,13 +21,18 @@ __status__ = "Beta"
 from lxml import etree
 
 from selenium import webdriver
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import StaleElementReferenceException
 
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+
+import time
 
 #此網址是 Nasdaq 網站的 Tesla 即時股價，此股價在換頁時，網址並不會更動，因此適合使用 Selenium
 __baseUrl__ = 'https://www.nasdaq.com/market-activity/stocks/tsla/latest-real-time-trades'
@@ -40,6 +45,9 @@ def main():
     #隱式等待：嘗試發現某個元素，如果沒能發現就等待固定長度的時間，預設設定是0秒。
     wd.implicitly_wait(5)
 
+    # 禁用動畫
+    wd.execute_script("document.body.style.webkitAnimationPlayState='paused'")
+
     results = wd.find_element(By.XPATH, '//table[@class="latest-real-time-trades__table"]').get_attribute('innerHTML')
     dom = etree.HTML(results)
 
@@ -49,16 +57,34 @@ def main():
 
     dayTrades = composeTrade(dom)
     #持續點擊下一頁
-    nextButton = wd.find_element(By.XPATH, '//button[@class="pagination__next"]')
-    while nextButton.get_attribute('disabled') is None:
-        nextButton.click()
-        # 顯示等待：等待目標元素的出現，最多等待20秒
-        WebDriverWait(wd, 20).until(expected_conditions.presence_of_element_located((By.XPATH, '//table[@class="latest-real-time-trades__table"]')))
+    # nextButton = wd.find_element(By.XPATH, '//button[@class="pagination__next"]')
+    nextButtonXpath = '//button[@class="pagination__next"]'
+    while True:
+        try:
+            # 顯示等待：等待目標元素的出現，最多等待20秒
+            wait = WebDriverWait(wd, 10)
+            element = wait.until(EC.element_to_be_clickable((By.XPATH, nextButtonXpath)))
 
-        results = wd.find_element(By.XPATH, '//table[@class="latest-real-time-trades__table"]').get_attribute('innerHTML')
-        dom = etree.HTML(results)
-        dayTrades.extend(composeTrade(dom))
-        nextButton = wd.find_element(By.XPATH, '//button[@class="pagination__next"]')
+            #將捲軸捲到 bottom 的定位點
+            wd.execute_script("arguments[0].scrollIntoView()", element)
+
+            # 移動到該元素上方再進行點擊
+            actions = ActionChains(wd)
+            actions.move_to_element(element)
+
+            #要視實際載入內容的速度，進行秒數的調整
+            time.sleep(5)
+            results = wd.find_element(By.XPATH, '//table[@class="latest-real-time-trades__table"]').get_attribute('innerHTML')
+            dom = etree.HTML(results)
+            dayTrades.extend(composeTrade(dom))
+
+            # 使用 JavaScript 點擊該元素
+            wd.execute_script("arguments[0].click();", element)
+            print('.',end = '')
+        except TimeoutException:
+            break
+        except StaleElementReferenceException:
+            break
   
     print(dayTrades)
     wd.close()    
