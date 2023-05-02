@@ -110,8 +110,7 @@ def fetchProducts(productList):
         print('Feteching Product Index: ' + str(idx))
         try:
             wd.get(__baseUrl__ + list['link'])
-            sleep(random.randint(8000, 10000)/1000)
-            # sleep(random.randint(8000, 10000)/1000)
+            sleep(random.randint(5000, 8000)/1000)
             results = WebDriverWait(wd, 10).until(EC.presence_of_element_located((By.XPATH, '//div[@role="main"]'))).get_attribute('innerHTML')
             dom = etree.HTML(results)
             if dom is not None:
