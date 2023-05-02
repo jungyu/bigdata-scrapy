@@ -22,10 +22,13 @@ from time import sleep
 import loguru
 
 from selenium import webdriver
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import StaleElementReferenceException
 
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -36,52 +39,84 @@ __baseUrl__ = 'https://shopee.tw'
 __storeUrl__ = '/hsu6666'
 __storeName__ = '娜娜正版專賣'
 
+#2023年4月之後欲檢視蝦皮商品詳細頁，需先登入才行。
+__user__ = ''
+__password__ = ''
+
 def main():
-    wd.get(__baseUrl__ + __storeUrl__ + '?sortBy=ctime&page=0#product_list')
-    sleep(random.randint(5000, 8000)/1000)
     productList = fetchProductList()
-    #去除重複的連結
+    # 登入蝦皮帳號(2023.4 Shopee 設定商品內頁需登入才能檢視)
+    login()
+    sleep(random.randint(5000, 8000)/1000)
+    # 去除重複的連結
     productList = [dict(t) for t in {tuple(d.items()) for d in productList}] 
     products = fetchProducts(productList)
     saveJsonFile(products)
 
 def fetchProductList():
-    #Shopee 的商品列表是採取 AJAX 延遲載入(疑似無法擷取到全部商品)
-    ResultView = WebDriverWait(wd, 10).until(expected_conditions.presence_of_element_located((By.XPATH, '//div[@class="shop-search-result-view"]')))
-    #滾動到指定元素底部
-    wd.execute_script("arguments[0].scrollIntoView(false)", ResultView)
-    sleep(random.randint(5000, 8000)/1000)
-    results = WebDriverWait(wd, 10).until(expected_conditions.presence_of_element_located((By.XPATH, '//div[@class="shop-search-result-view"]'))).get_attribute('innerHTML')
-    dom = etree.HTML(results)
-    list = composeProducts(dom)
-    totalPage = wd.find_element(By.XPATH, '//span[@class="shopee-mini-page-controller__total"]').text
+    # 第一頁
+    wd.get(__baseUrl__ + __storeUrl__ + '?sortBy=ctime&page=0#product_list')
+    
+    # 取得全部頁數
+    totalPageElement = '//span[@class="shopee-mini-page-controller__total"]'
+    WebDriverWait(wd, 10).until(EC.presence_of_element_located((By.XPATH, totalPageElement)))
+    totalPage = wd.find_element(By.XPATH, totalPageElement).text
+    productList = []
     #測試時，若筆數太多造成處理時間冗長，建議註解以下分頁迴圈處理
-    for pageNumber in range(1, int(totalPage), 1):
+    for pageNumber in range(0, int(totalPage), 1):
         print('Feteching Page: ' + str(pageNumber))
-        list += fetchProductListByPage(pageNumber)
+        productList += fetchProductListByPage(pageNumber)
 
-    return list
+    print(productList)
+    return productList
 
 def fetchProductListByPage(pageNumber):
     wd.get(__baseUrl__ + __storeUrl__ + '?sortBy=ctime&page=' + str(pageNumber) + '#product_list')
-    sleep(random.randint(5000, 8000)/1000)
-    ResultView = WebDriverWait(wd, 20).until(expected_conditions.presence_of_element_located((By.XPATH, '//div[@class="shop-search-result-view"]')))
-    #滾動到指定元素底部
-    wd.execute_script("arguments[0].scrollIntoView(false)", ResultView)
-    sleep(random.randint(5000, 8000)/1000)
-    results = WebDriverWait(wd, 10).until(expected_conditions.presence_of_element_located((By.XPATH, '//div[@class="shop-search-result-view"]'))).get_attribute('innerHTML')
-    dom = etree.HTML(results)
+    sleep(random.randint(500, 8000)/1000)
+    # ResultView = WebDriverWait(wd, 20).until(EC.presence_of_element_located((By.XPATH, '//div[@class="shop-search-result-view"]')))
+    ResultView = WebDriverWait(wd, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, '.shop-search-result-view')))
+
+    try:
+        #滾動到指定元素底部
+        wd.execute_script("arguments[0].scrollIntoView(false)", ResultView)
+        sleep(random.randint(5000, 8000)/1000)
+        # results = WebDriverWait(wd, 10).until(EC.presence_of_element_located((By.XPATH, '//div[@class="shop-search-result-view"]'))).get_attribute('innerHTML')
+        results = WebDriverWait(wd, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, '.shop-search-result-view'))).get_attribute('innerHTML')
+        dom = etree.HTML(results)
+    # 若發生錯誤，再重新執行一次
+    except TimeoutException:
+        fetchProductListByPage(pageNumber)
+    except StaleElementReferenceException:
+        fetchProductListByPage(pageNumber)
+
     return composeProducts(dom)
+
+def login():
+    wd.get(__baseUrl__ + '/buyer/login')
+    sleep(random.randint(5000, 8000)/1000)
+    userInput = WebDriverWait(wd, 5).until(EC.presence_of_element_located((By.XPATH, '//input[@name="loginKey"]')))
+    userInput.send_keys(__user__)
+    passInput = WebDriverWait(wd, 5).until(EC.presence_of_element_located((By.XPATH, '//input[@name="password"]')))
+    passInput.send_keys(__password__)
+    loginButton = WebDriverWait(wd, 5).until(EC.element_to_be_clickable((By.XPATH, '//button[text()="登入"]')))
+    # 移動到該元素上方再進行點擊
+    actions = ActionChains(wd)
+    actions.move_to_element(loginButton).click().perform()
+
 
 def fetchProducts(productList):
     products = []
     for idx, list in enumerate(productList):
         print('Feteching Product Index: ' + str(idx))
-        wd.get(__baseUrl__ + list['link'])
-        sleep(random.randint(5000, 8000)/1000)
-        results = WebDriverWait(wd, 10).until(expected_conditions.presence_of_element_located((By.XPATH, '//div[@class="page-product"]'))).get_attribute('innerHTML')
-        dom = etree.HTML(results)
-        products.append(parseProductDetail(dom, list))
+        try:
+            wd.get(__baseUrl__ + list['link'])
+            sleep(random.randint(8000, 10000)/1000)
+            results = WebDriverWait(wd, 10).until(EC.presence_of_element_located((By.XPATH, '//div[@class="page-product"]'))).get_attribute('innerHTML')
+            dom = etree.HTML(results)
+            if dom is not None:
+                products.append(parseProductDetail(dom, list))
+        except TimeoutException:
+            continue
     
     return products
 
@@ -154,10 +189,11 @@ def handleList(object):
     return object
 
 def composeProducts(dom):
+    if dom is None:
+        return []
     links = dom.xpath('//div[contains(@class, "shop-search-result-view__item")]/a/@href')
     titles = dom.xpath('//div[contains(@class, "shop-search-result-view__item")]/a//img/@alt')
     products = []
-
     for idx, link in enumerate(links):
         try:
             products.append({
@@ -188,11 +224,20 @@ if __name__ == '__main__':
 
     options = Options()
 
-    # 排除項目： 1. automation 自動軟體正在控制您的瀏覽器 2. logging 日誌記錄 3. Extension 擴展
+    # 排除項目： 1. automation 自動軟體控制您的瀏覽器 2. logging 日誌記錄 3. Extension 擴展
     options.add_experimental_option("excludeSwitches", ["enable-automation", 'enable-logging'])
     options.add_experimental_option('useAutomationExtension', False)
     # 暫先停用密碼管理員及憑證服務
-    options.add_experimental_option("prefs", {"profile.password_manager_enabled": False, "credentials_enable_service": False})
+    options.add_experimental_option("prefs", {"profile.password_manager_enabled": False, "credentials_enable_service": False, "profile.default_content_setting_values.notifications" : 2})
+    # Selenium 執行完後不關閉瀏覽器
+    options.add_experimental_option('detach', True)
+    # 最小化瀏覽器視窗
+    # options.add_argument('headless') 
+    # 設置瀏覽器視窗大小為 1920x1080
+    # options.add_argument('window-size=1920x1080') 
+    # 不載入圖片，提升爬蟲速度
+    options.add_argument('blink-settings=imagesEnabled=false') 
+
     # 預設使用 chromium 核心
     options.use_chromium = True
 
@@ -221,4 +266,10 @@ if __name__ == '__main__':
     # 宣告 webdriver 實體
     wd = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
+    # 禁用動畫
+    wd.execute_script("document.body.style.webkitAnimationPlayState='paused'")
+
     main()
+
+    # 關閉瀏覽器
+    # driver.quit()
