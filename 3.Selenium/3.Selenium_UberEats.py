@@ -110,10 +110,6 @@ def main():
     actions = ActionChains(wd)
     actions.move_to_element(productElement).click().perform()
 
-    '''
-    itemButton = wd.find_element(By.XPATH, '//li/h3[contains(text(),"' + __wantCategory__ + '")]/parent::li//span[contains(text(),"' + __wantItem__ + '")]/parent::div/parent::div/following::div[1]/button')
-    itemButton.click()
-    '''
     ### 在 Dialog 對話視窗內選購 ###
     sleep(5)
     WebDriverWait(wd, 10).until(EC.presence_of_element_located((By.XPATH, '//main[@id="main-content"]//h1')))
@@ -125,7 +121,7 @@ def main():
     optionButton.click()
     wd.implicitly_wait(2)
 
-    orderButton = wd.find_element(By.XPATH, '//main[@id="main-content"]//button/div[contains(text(), "商品至訂單")]/parent::button')
+    orderButton = wd.find_element(By.XPATH, '//main[@id="main-content"]//div[@data-test ="add-to-cart-cta"]/button')
     orderButton.click()
     # TODO:結帳->登入...
     # TODO:使用 ngrok 對外提供 API 或 webhook
@@ -165,6 +161,8 @@ if __name__ == '__main__':
     options.add_experimental_option('useAutomationExtension', False)
     # 暫先停用密碼管理員及憑證服務
     options.add_experimental_option("prefs", {"profile.password_manager_enabled": False, "credentials_enable_service": False})
+    # Selenium 執行完後不關閉瀏覽器
+    options.add_experimental_option('detach', True)
     # 預設使用 chromium 核心
     options.use_chromium = True
 
@@ -194,3 +192,6 @@ if __name__ == '__main__':
     wd = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
     main()
+
+    # 關閉瀏覽器
+    # driver.quit()
