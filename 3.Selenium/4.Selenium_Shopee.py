@@ -111,7 +111,7 @@ def fetchProducts(productList):
         try:
             wd.get(__baseUrl__ + list['link'])
             sleep(random.randint(8000, 10000)/1000)
-            results = WebDriverWait(wd, 10).until(EC.presence_of_element_located((By.XPATH, '//div[@class="page-product"]'))).get_attribute('innerHTML')
+            results = WebDriverWait(wd, 10).until(EC.presence_of_element_located((By.XPATH, '//div[@class="page-product page-product--mall"]'))).get_attribute('innerHTML')
             dom = etree.HTML(results)
             if dom is not None:
                 products.append(parseProductDetail(dom, list))
