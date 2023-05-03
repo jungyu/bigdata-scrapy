@@ -174,6 +174,12 @@ def parseProductDetail(soup, list):
     detail_elem = soup.select_one('div:-soup-contains("商品詳情") + div')
     if detail_elem:
         detail = detail_elem.prettify()
+        # 將 HTML 解析成 BeautifulSoup 物件
+        detail_soup = BeautifulSoup(detail, 'html.parser')
+        # 取得所有文本
+        detail = detail_soup.get_text(separator='\n')
+        # 刪除 HTML 標籤
+        detail = re.sub(r'<.*?>', '', detail)
 
     # '//div[contains(text(), "商品規格")]/following::div[1]'
     spec = ''
