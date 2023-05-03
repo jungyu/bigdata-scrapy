@@ -16,6 +16,7 @@ import json
 import re
 
 from datetime import datetime
+from bs4 import BeautifulSoup
 from lxml import etree
 from time import sleep
 
@@ -66,7 +67,7 @@ def fetchProductList():
     for pageNumber in range(0, int(totalPage), 1):
         print('Feteching Page: ' + str(pageNumber))
         productList += fetchProductListByPage(pageNumber)
-
+        
     print(productList)
     return productList
 
@@ -93,7 +94,7 @@ def fetchProductListByPage(pageNumber):
 
 def login():
     wd.get(__baseUrl__ + '/buyer/login')
-    sleep(random.randint(5000, 8000)/1000)
+    # sleep(random.randint(5000, 8000)/1000)
     userInput = WebDriverWait(wd, 5).until(EC.presence_of_element_located((By.XPATH, '//input[@name="loginKey"]')))
     userInput.send_keys(__user__)
     passInput = WebDriverWait(wd, 5).until(EC.presence_of_element_located((By.XPATH, '//input[@name="password"]')))
@@ -110,55 +111,100 @@ def fetchProducts(productList):
         print('Feteching Product Index: ' + str(idx))
         try:
             wd.get(__baseUrl__ + list['link'])
-            sleep(random.randint(5000, 8000)/1000)
-            results = WebDriverWait(wd, 10).until(EC.presence_of_element_located((By.XPATH, '//div[@role="main"]'))).get_attribute('innerHTML')
-            dom = etree.HTML(results)
-            if dom is not None:
-                products.append(parseProductDetail(dom, list))
+            # wd.execute_script('document.cookie = "af-ac-enc-dat=null"')
+            sleep(random.randint(8000, 10000)/1000)
+            # etree.HTML(results) 回傳 None，可能是 Shopee 的 html 有誤，裡頭可能夾雜了無法正確解析的字元，所以改用 BeautifulSoup 來解析
+            results = WebDriverWait(wd, 20).until(EC.presence_of_element_located((By.ID, "main"))).get_attribute('innerHTML')
+            soup = cleanHTMLTag(results)
+            # dom = etree.HTML(results)
+            if soup is not None:
+                products.append(parseProductDetail(soup, list))
         except TimeoutException:
             continue
     
     return products
 
-def parseProductDetail(dom, list):
-    price = dom.xpath('//div[contains(text(), "$")][1]/text()')
-    price = handleList(price)
+def cleanHTMLTag(html):
+    # 將 HTML 字串轉換成 BeautifulSoup 物件
+    soup = BeautifulSoup(html, 'html.parser')
+    # 刪除所有 <style> 標籤
+    for tag in soup.find_all('style'):
+        tag.extract()
+    # 刪除所有 <path> 標籤
+    for tag in soup.find_all('path'):
+        tag.extract()
+    # 刪除所有 <polygon> 標籤
+    for tag in soup.find_all('polygon'):
+        tag.extract() 
+    # 刪除所有 <svg> 標籤
+    for tag in soup.find_all('svg'):
+        tag.extract()
+    # 刪除所有 <g> 標籤
+    for tag in soup.find_all('g'):
+        tag.extract()
+
+    # 使用 prettify() 函式進行格式整齊化
+    prettified_html = soup.prettify()
+    soup = BeautifulSoup(prettified_html, 'html.parser')
+    return soup
+
+def parseProductDetail(soup, list):
+
+    # '//div[contains(text(), "$")][1]/text()'
+    price = ''
+    price_elem = soup.find('div', {'class': 'product-briefing'}).find(string=re.compile('\$'))
+    if price_elem:
+        price = price_elem.text.strip()
     price = price.replace("$", "")
 
-    stock = dom.xpath('//label[contains(text(), "商品數量")]/following::div[1]/text()')
-    stock = handleList(stock)
+    # '//label[contains(text(), "商品數量")]/following::div[1]/text()'
+    stock = ''
+    stock_elem = soup.select_one('label:-soup-contains("商品數量") + div')
+    if stock_elem:
+        stock = stock_elem.text.strip()
 
-    fromAddress = dom.xpath('//label[contains(text(), "出貨地")]/following::div[1]/text()')
-    fromAddress = handleList(fromAddress)
+    # '//label[contains(text(), "出貨地")]/following::div[1]/text()'
+    fromAddress = ''
+    fromAddress_elem = soup.select_one('label:-soup-contains("出貨地") + div')
+    if fromAddress_elem:
+        fromAddress = fromAddress_elem.text.strip()
 
-    detail = dom.xpath('//div[contains(text(), "商品詳情")]/following::div[1]')
-    if len(detail) > 0:
-        detail = detail[0]
-        detail = remove_tags(etree.tostring(detail, encoding='unicode', pretty_print=True))
-    else:
-        detail = ''
+    # '//div[contains(text(), "商品詳情")]/following::div[1]'
+    detail = ''
+    detail_elem = soup.select_one('div:-soup-contains("商品詳情") + div')
+    if detail_elem:
+        detail = detail_elem.prettify()
 
-    spec = dom.xpath('//div[contains(text(), "商品規格")]/following::div[1]')
-    if len(spec) > 0:
-        spec = spec[0]
+    # '//div[contains(text(), "商品規格")]/following::div[1]'
+    spec = ''
+    spec_elem = soup.select_one('div:-soup-contains("商品規格") + div')
+    if spec_elem:
+        spec = etree.HTML(spec_elem.prettify())
+    
+    length = ''
+    try:
+        length = parseProductSpec(spec, "長度")
+        length = handleList(length)
+    except:
+        print("長度：解析錯誤")
 
-    length = parseProductSpec(spec, "長度")
-    length = handleList(length)
+    width = ''
+    try:
+        width = parseProductSpec(spec, "寬")
+        width = handleList(width)
+    except:
+        print("寬：解析錯誤")
 
-    width = parseProductSpec(spec, "寬")
-    width = handleList(width)
+    # '//label[contains(text(),"分類")]/following::a/text()'
+    tag_elems = soup.select('label:-soup-contains("分類") + div a')
+    tags = [tag_elem.text.strip() for tag_elem in tag_elems if tag_elem.text.strip() != '蝦皮購物']
 
-    tags = dom.xpath('//label[contains(text(),"分類")]/following::a/text()')
-    if len(tags) > 0:
-        tags.remove('蝦皮購物')
-    else:
-        tags = []
-
-    images = parseProductImages(dom.xpath('//div[contains(@style,"background-image: ")]/@style'))
+    # '//div[contains(@style,"background-image: ")]/@style'
+    images = parseProductImages(soup.select('div[style*="background-image:"]'))
 
     return {
         'title': list['title'],
-        'link': list['link'],
+        'link': list['link'], 
         'price': price,
         'stock': stock,
         'tags': tags,
@@ -175,10 +221,15 @@ def parseProductSpec(spec, text):
     except:
         return ''
 
-def parseProductImages(images):
+def parseProductImages(styles):
     imageUrls = []
-    for image in images:
-        imageUrls.append(image.split("\"")[1])
+    for style in styles:
+        style_str = style['style']
+        match = re.search(r'url\((.*)\)', style_str)
+        if match:
+            image = match.group(1)
+            if image:
+                imageUrls.append(image.split("\"")[1])
     return imageUrls
     
 def handleList(object):
@@ -230,7 +281,7 @@ if __name__ == '__main__':
     # 暫先停用密碼管理員及憑證服務
     options.add_experimental_option("prefs", {"profile.password_manager_enabled": False, "credentials_enable_service": False, "profile.default_content_setting_values.notifications" : 2})
     # Selenium 執行完後不關閉瀏覽器
-    options.add_experimental_option('detach', True)
+    # options.add_experimental_option('detach', True)
     # 最小化瀏覽器視窗
     # options.add_argument('headless') 
     # 設置瀏覽器視窗大小為 1920x1080
@@ -243,7 +294,7 @@ if __name__ == '__main__':
 
     # 許多網站會檢查 user-agent 
     # 找 user-agent 的網站： https://www.whatsmyua.info/
-    userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36";
+    userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36"
     options.add_argument("user-agent={}".format(userAgent))
 
     # 不讓瀏覽器執行在前台，而是在背景執行。
@@ -257,7 +308,7 @@ if __name__ == '__main__':
     options.add_argument('--disable-dev-shm-usage')
 
     # 設定瀏覽器的解析度
-    options.add_argument("--start-maximized")
+    # options.add_argument("--start-maximized")
     # options.add_argument('--window-size=1920,1080')
 
     # 關閉 GPU ，Google 文件提到需要加上這個參數來解決部份的 bug
@@ -267,9 +318,10 @@ if __name__ == '__main__':
     wd = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
     # 禁用動畫
-    wd.execute_script("document.body.style.webkitAnimationPlayState='paused'")
+    # wd.execute_script("document.body.style.webkitAnimationPlayState='paused'")
 
+    # 偵測是否已載入
     main()
 
     # 關閉瀏覽器
-    # driver.quit()
+    wd.quit()
