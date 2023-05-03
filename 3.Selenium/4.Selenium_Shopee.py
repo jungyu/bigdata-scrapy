@@ -45,10 +45,11 @@ __user__ = ''
 __password__ = ''
 
 def main():
-    productList = fetchProductList()
     # 登入蝦皮帳號(2023.4 Shopee 設定商品內頁需登入才能檢視)
-    login()
-    sleep(random.randint(5000, 8000)/1000)
+    # 為避免太過頻繁登入，導致蝦皮偵測到，改使用手動登入
+    # login()
+    # sleep(random.randint(5000, 8000)/1000)
+    productList = fetchProductList()
     # 去除重複的連結
     productList = [dict(t) for t in {tuple(d.items()) for d in productList}] 
     products = fetchProducts(productList)
@@ -67,7 +68,7 @@ def fetchProductList():
     for pageNumber in range(0, int(totalPage), 1):
         print('Feteching Page: ' + str(pageNumber))
         productList += fetchProductListByPage(pageNumber)
-        
+
     print(productList)
     return productList
 
@@ -94,11 +95,13 @@ def fetchProductListByPage(pageNumber):
 
 def login():
     wd.get(__baseUrl__ + '/buyer/login')
-    # sleep(random.randint(5000, 8000)/1000)
+    sleep(random.randint(3000, 5000)/1000)
     userInput = WebDriverWait(wd, 5).until(EC.presence_of_element_located((By.XPATH, '//input[@name="loginKey"]')))
     userInput.send_keys(__user__)
+    sleep(random.randint(3000, 5000)/1000)
     passInput = WebDriverWait(wd, 5).until(EC.presence_of_element_located((By.XPATH, '//input[@name="password"]')))
     passInput.send_keys(__password__)
+    sleep(random.randint(3000, 5000)/1000)
     loginButton = WebDriverWait(wd, 5).until(EC.element_to_be_clickable((By.XPATH, '//button[text()="登入"]')))
     # 移動到該元素上方再進行點擊
     actions = ActionChains(wd)
@@ -180,6 +183,7 @@ def parseProductDetail(soup, list):
         detail = detail_soup.get_text()
         # 不管是斷行幾次，都改成只斷行1次
         detail = re.sub(r'\n+', '\n', detail)
+    print(detail)
 
     # '//div[contains(text(), "商品規格")]/following::div[1]'
     spec = ''
@@ -282,10 +286,19 @@ if __name__ == '__main__':
     options = Options()
 
     # 排除項目： 1. automation 自動軟體控制您的瀏覽器 2. logging 日誌記錄 3. Extension 擴展
-    options.add_experimental_option("excludeSwitches", ["enable-automation", 'enable-logging'])
-    options.add_experimental_option('useAutomationExtension', False)
+    # options.add_experimental_option("excludeSwitches", ["enable-automation", 'enable-logging'])
+    # options.add_experimental_option('useAutomationExtension', False)
+
+    # 蝦皮拍賣會偵測你的 user 帳號過度頻繁的登入
+    # Selenium 使用已開啟的 Debug 模式的瀏覽器
+    # 此瀏覽器需透過指令來啟動
+    # windows  $ c:\Program Files (x86)\Google\Chrome\Application>chrome.exe --remote-debugging-port=9222
+    # Mac $ "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"  --remote-debugging-port=9222 --no-first-run --no-default-browser-check --user-data-dir=$(mktemp -d -t 'chrome-remote_data_dir')
+    options.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
+
+
     # 暫先停用密碼管理員及憑證服務
-    options.add_experimental_option("prefs", {"profile.password_manager_enabled": False, "credentials_enable_service": False, "profile.default_content_setting_values.notifications" : 2})
+    # options.add_experimental_option("prefs", {"profile.password_manager_enabled": False, "credentials_enable_service": False, "profile.default_content_setting_values.notifications" : 2})
     # Selenium 執行完後不關閉瀏覽器
     # options.add_experimental_option('detach', True)
     # 最小化瀏覽器視窗
@@ -296,22 +309,22 @@ if __name__ == '__main__':
     options.add_argument('blink-settings=imagesEnabled=false') 
 
     # 預設使用 chromium 核心
-    options.use_chromium = True
+    # options.use_chromium = True
 
     # 許多網站會檢查 user-agent 
     # 找 user-agent 的網站： https://www.whatsmyua.info/
-    userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36"
-    options.add_argument("user-agent={}".format(userAgent))
+    # userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36"
+    # options.add_argument("user-agent={}".format(userAgent))
 
     # 不讓瀏覽器執行在前台，而是在背景執行。
     # 開發前期(或在本機執行)，將以下參數註解 # 不使用，才能看的到畫面
     # options.add_argument('--headless')
 
     # 在非沙盒測試環境下，可以 root 權限運行
-    options.add_argument('--no-sandbox')
+    # options.add_argument('--no-sandbox')
 
     # 不採用 /dev/shm 作為暫存區(系統會改使用 /tmp)
-    options.add_argument('--disable-dev-shm-usage')
+    # options.add_argument('--disable-dev-shm-usage')
 
     # 設定瀏覽器的解析度
     # options.add_argument("--start-maximized")
