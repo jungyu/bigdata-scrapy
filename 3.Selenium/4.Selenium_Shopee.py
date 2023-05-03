@@ -176,10 +176,10 @@ def parseProductDetail(soup, list):
         detail = detail_elem.prettify()
         # 將 HTML 解析成 BeautifulSoup 物件
         detail_soup = BeautifulSoup(detail, 'html.parser')
-        # 取得所有文本
-        detail = detail_soup.get_text(separator='\n')
-        # 刪除 HTML 標籤
-        detail = re.sub(r'<.*?>', '', detail)
+        # 取得所有內容文字
+        detail = detail_soup.get_text()
+        # 不管是斷行幾次，都改成只斷行1次
+        detail = re.sub(r'\n+', '\n', detail)
 
     # '//div[contains(text(), "商品規格")]/following::div[1]'
     spec = ''
