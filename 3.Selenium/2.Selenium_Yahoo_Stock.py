@@ -47,6 +47,9 @@ def main():
     print(tradeDate)
 
     nextButtonXpath = '//span[contains(text(),"載入更多")]/parent::*/parent::button'
+    #新增CloseAD,以避免64行及小螢幕出現無法偵測的問題
+    closeAD = wd.find_element(By.XPATH, '//button[@class="Fxs(0) H(24px) B(n) Mt(20px) P(0) As(fs)"]')
+    closeAD.click()
     #持續點擊「載入更多」
     while wd.find_element(By.XPATH, nextButtonXpath):
         # 等待元素可被點擊
